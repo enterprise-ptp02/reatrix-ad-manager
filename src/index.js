@@ -242,7 +242,7 @@ function renderHTML() {
             Swal.fire({ title:'SEO CODE', html:\`<textarea readonly class="w-full h-24 p-3 text-[10px] font-mono border rounded-xl bg-slate-50">\${code}</textarea>\` });
         }
         function del(s) {
-            Swal.fire({ title:'Hapus?', icon:'warning', showCancelButton:true, confirmButtonColor:'#ef4444' }).then(r => {
+            Swal.fire({ title:'Iklan Akan DiHapus, Dari Data Base', icon:'warning', showCancelButton:true, confirmButtonColor:'#ef4444' }).then(r => {
                 if(r.isConfirmed) fetch('/api/delete',{method:'POST',body:JSON.stringify({slug:s})}).then(()=>load());
             });
         }
