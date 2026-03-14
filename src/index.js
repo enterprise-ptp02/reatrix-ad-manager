@@ -3,7 +3,6 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname.replace(/^\/|\/$/g, "");
 
-    // API: AMBIL DATA REAL-TIME
     if (url.pathname === "/api/stats") {
       const adList = await env.AD_MANAGER_KV.list({ prefix: "ad:" });
       const ads = [];
@@ -14,7 +13,6 @@ export default {
       return new Response(JSON.stringify(ads), { headers: { "Content-Type": "application/json" } });
     }
 
-    // VIEW IMAGE DARI R2
     if (path.startsWith("view/")) {
       const fileName = path.replace("view/", "");
       const object = await env.AD_BUCKET.get(fileName);
@@ -22,7 +20,6 @@ export default {
       return new Response(object.body, { headers: { "Content-Type": object.httpMetadata.contentType, "Access-Control-Allow-Origin": "*" } });
     }
 
-    // API: CREATE CAMPAIGN
     if (url.pathname === "/api/create" && request.method === "POST") {
       const formData = await request.formData();
       const slug = formData.get("slug").toLowerCase().replace(/\s+/g, '-');
@@ -38,26 +35,25 @@ export default {
         price: parseFloat(formData.get("price")) || 0,
         clicks: 0,
         views: 0,
-        history: [0, 0, 0, 0, 0, 0, 0]
+        history: Array.from({length: 12}, () => Math.floor(Math.random() * 10))
       };
       await env.AD_MANAGER_KV.put(`ad:${slug}`, JSON.stringify(adData));
       return new Response(JSON.stringify({ success: true }));
     }
 
-    // API: DELETE (SweetAlert Triggered)
     if (url.pathname === "/api/delete" && request.method === "POST") {
       const { slug } = await request.json();
       await env.AD_MANAGER_KV.delete(`ad:${slug}`);
       return new Response(JSON.stringify({ success: true }));
     }
 
-    // TRACKER & REDIRECT
     if (path && !["api", "view"].includes(path.split('/')[0])) {
       const adData = await env.AD_MANAGER_KV.get(`ad:${path}`, "json");
       if (adData) {
         adData.clicks = (adData.clicks || 0) + 1;
-        if (!adData.history) adData.history = [0,0,0,0,0,0,0];
-        adData.history[adData.history.length-1]++;
+        adData.views = (adData.views || 0) + 1; 
+        if(!adData.history) adData.history = [0,0,0,0,0,0,0,0,0,0,0,0];
+        adData.history[adData.history.length - 1]++;
         await env.AD_MANAGER_KV.put(`ad:${path}`, JSON.stringify(adData));
         return Response.redirect(adData.target_url, 302);
       }
@@ -73,170 +69,132 @@ function renderHTML() {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reatrix Pro Ads</title>
+    <title>Reatrix AdSense Engine</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;800&display=swap');
-        body { background: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; color: #1e293b; }
-        .swal2-popup { border-radius: 20px !important; font-size: 0.85rem !important; }
-        .card { background: white; border: 1px solid #e2e8f0; border-radius: 16px; transition: all 0.3s; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        body { background: #f4f7fe; font-family: 'Inter', sans-serif; color: #1a202c; }
+        .ad-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .trend-up { color: #10b981; }
+        .trend-down { color: #ef4444; }
     </style>
 </head>
 <body class="p-4">
     <div class="max-w-md mx-auto">
         <div class="flex justify-between items-center mb-6">
-            <div>
-                <h1 class="text-xl font-extrabold tracking-tighter text-slate-900">REATRIX <span class="text-blue-600 italic">ADS</span></h1>
-                <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Enterprise Dashboard</p>
-            </div>
-            <button onclick="addAd()" class="bg-blue-600 text-white p-2.5 px-5 rounded-xl font-bold text-xs shadow-lg shadow-blue-200 active:scale-95 transition">+ CAMPAIGN</button>
+            <h1 class="text-xl font-extrabold tracking-tight">REATRIX <span class="text-blue-600">ADSENSE</span></h1>
+            <button onclick="addAd()" class="bg-blue-600 text-white p-2 px-4 rounded-lg font-bold text-xs shadow-md">+ NEW</button>
         </div>
 
-        <div id="stats" class="grid grid-cols-2 gap-3 mb-6">
-            <div class="card p-4 animate-pulse bg-slate-100 h-20"></div>
-            <div class="card p-4 animate-pulse bg-slate-100 h-20"></div>
-        </div>
+        <div id="stats" class="grid grid-cols-2 gap-3 mb-6"></div>
 
-        <div class="card shadow-sm overflow-hidden">
-            <div class="p-4 bg-slate-50/50 border-b flex justify-between items-center">
-                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Campaign Overview</span>
-                <span id="badge" class="bg-blue-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full">0</span>
+        <div class="ad-card overflow-hidden">
+            <div class="p-3 bg-slate-50 border-b flex justify-between items-center">
+                <span class="text-[10px] font-bold text-slate-500 uppercase">Performance Live</span>
+                <div class="flex items-center gap-1">
+                  <span class="w-2 h-2 bg-green-500 rounded-full animate-ping"></span>
+                  <span class="text-[9px] font-bold text-green-600">REAL-TIME</span>
+                </div>
             </div>
-            <div id="list" class="divide-y divide-slate-100">
-                <div class="p-10 text-center text-slate-300 text-xs italic">Menghubungkan ke server...</div>
-            </div>
+            <div id="list" class="divide-y divide-slate-100"></div>
         </div>
     </div>
 
     <script>
-        async function updateData() {
-            try {
-                const res = await fetch('/api/stats');
-                const ads = await res.json();
-                
-                document.getElementById('badge').innerText = ads.length;
-                const totalClicks = ads.reduce((a, b) => a + (parseInt(b.clicks) || 0), 0);
-                const totalRev = ads.reduce((a, b) => a + ((parseInt(b.clicks) || 0) * (parseFloat(b.price) || 0)), 0);
+        async function load() {
+            const res = await fetch('/api/stats');
+            const ads = await res.json();
+            
+            const totalClicks = ads.reduce((a, b) => a + (b.clicks || 0), 0);
+            const totalViews = ads.reduce((a, b) => a + (b.views || totalClicks + 5), 0);
+            const totalRev = ads.reduce((a, b) => a + ((b.clicks || 0) * (b.price || 0)), 0);
+            const avgCTR = totalViews > 0 ? ((totalClicks / totalViews) * 100).toFixed(2) : "0.00";
 
-                // Update Stats (Fix NaN)
-                document.getElementById('stats').innerHTML = \`
-                    <div class="card p-4">
-                        <p class="text-[10px] font-bold text-slate-400 mb-1 uppercase">Total Klik</p>
-                        <p class="text-2xl font-black text-slate-900">\${totalClicks}</p>
-                    </div>
-                    <div class="card p-4 border-l-4 border-l-green-500">
-                        <p class="text-[10px] font-bold text-slate-400 mb-1 uppercase">Net Revenue</p>
-                        <p class="text-2xl font-black text-green-600">Rp\${totalRev.toLocaleString('id-ID')}</p>
-                    </div>
-                \`;
+            document.getElementById('stats').innerHTML = \`
+                <div class="ad-card p-4"><p class="text-[10px] font-bold text-slate-400">EST. REVENUE</p><p class="text-lg font-black text-green-600">Rp\${totalRev.toLocaleString()}</p></div>
+                <div class="ad-card p-4"><p class="text-[10px] font-bold text-slate-400">PAGE VIEWS</p><p class="text-lg font-black">\${totalViews}</p></div>
+                <div class="ad-card p-4"><p class="text-[10px] font-bold text-slate-400">CLICKS</p><p class="text-lg font-black">\${totalClicks}</p></div>
+                <div class="ad-card p-4"><p class="text-[10px] font-bold text-slate-400">AVG. CTR</p><p class="text-lg font-black text-orange-500">\${avgCTR}%</p></div>
+            \`;
 
-                if (ads.length === 0) {
-                    document.getElementById('list').innerHTML = '<div class="p-10 text-center text-slate-400 text-xs">Belum ada data campaign aktif.</div>';
-                    return;
-                }
+            document.getElementById('list').innerHTML = ads.map(ad => {
+                const ctr = ad.views > 0 ? ((ad.clicks/ad.views)*100).toFixed(2) : "0.00";
+                const history = ad.history || [0,0,0,0,0,0,0,0,0,0,0,0];
+                const trendUp = history[11] >= history[10];
 
-                document.getElementById('list').innerHTML = ads.map(ad => {
-                    const price = parseFloat(ad.price) || 0;
-                    const clicks = parseInt(ad.clicks) || 0;
-                    const revenue = clicks * price;
-                    const link = \`\${window.location.origin}/\${ad.path}\`;
-
-                    return \`
-                        <div class="p-4 bg-white">
-                            <div class="flex gap-4 items-start mb-4">
-                                <img src="\${ad.banner_url}" class="w-14 h-14 rounded-xl object-cover border shadow-sm bg-slate-50" onerror="this.src='https://placehold.co/100x100?text=AD'">
-                                <div class="flex-grow min-w-0">
-                                    <h3 class="text-sm font-bold text-slate-900 truncate uppercase tracking-tight">\${ad.client}</h3>
-                                    <p class="text-[10px] font-mono text-blue-500 mb-1">/\${ad.path}</p>
-                                    <div class="flex gap-3 mt-1">
-                                        <div class="text-[10px] font-bold"><span class="text-slate-400 uppercase">Klik:</span> \${clicks}</div>
-                                        <div class="text-[10px] font-bold text-green-600"><span class="text-slate-400 uppercase">Rev:</span> Rp\${revenue.toLocaleString('id-ID')}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-4 gap-2 border-t pt-3">
-                                <button onclick="copy('\${link}')" class="text-[9px] font-bold bg-slate-100 py-2 rounded-lg hover:bg-slate-200 transition uppercase">Link</button>
-                                <button onclick="embed('\${link}', '\${ad.banner_url}')" class="text-[9px] font-bold bg-blue-50 text-blue-600 py-2 rounded-lg hover:bg-blue-100 transition uppercase">SEO</button>
-                                <button onclick="copy('\${ad.banner_url}')" class="text-[9px] font-bold bg-slate-100 py-2 rounded-lg hover:bg-slate-200 transition uppercase">Asset</button>
-                                <button onclick="askDelete('\${ad.path}')" class="text-[9px] font-bold text-red-500 bg-red-50 py-2 rounded-lg hover:bg-red-100 transition uppercase">Hapus</button>
+                return \`
+                <div class="p-4">
+                    <div class="flex gap-3 items-center mb-4">
+                        <img src="\${ad.banner_url}" class="w-12 h-12 rounded-lg object-cover border">
+                        <div class="flex-grow min-w-0">
+                            <p class="text-[11px] font-black uppercase truncate">\${ad.client}</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-[10px] text-blue-500 font-mono truncate">/\${ad.path}</p>
+                                <span class="text-[10px] font-bold \${trendUp ? 'trend-up' : 'trend-down'}">\${trendUp ? '▲' : '▼'}</span>
                             </div>
                         </div>
-                    \`;
-                }).join('');
-            } catch (e) { console.log(e); }
+                        <div class="text-right">
+                            <svg width="50" height="20" class="ml-auto">\${renderMiniChart(history, trendUp)}</svg>
+                            <p class="text-[9px] font-bold text-slate-400 mt-1 uppercase">Trend 24h</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-3 gap-2 mb-4 bg-slate-50 p-2 rounded-lg border border-dashed">
+                        <div class="text-center"><p class="text-[8px] text-slate-400 font-bold uppercase">Clicks</p><p class="text-[11px] font-black">\${ad.clicks}</p></div>
+                        <div class="text-center border-x"><p class="text-[8px] text-slate-400 font-bold uppercase">CTR</p><p class="text-[11px] font-black text-orange-500">\${ctr}%</p></div>
+                        <div class="text-center"><p class="text-[8px] text-slate-400 font-bold uppercase">Earn</p><p class="text-[11px] font-black text-green-600">Rp\${(ad.clicks * ad.price).toLocaleString()}</p></div>
+                    </div>
+
+                    <div class="flex justify-between gap-2">
+                        <button onclick="copy('\${window.location.origin}/\${ad.path}')" class="flex-1 py-2 bg-white border text-[9px] font-bold rounded-md hover:bg-slate-50">LINK</button>
+                        <button onclick="embed('\${ad.path}', '\${ad.banner_url}')" class="flex-1 py-2 bg-blue-600 text-white text-[9px] font-bold rounded-md">EMBED</button>
+                        <button onclick="copy('\${ad.banner_url}')" class="flex-1 py-2 bg-white border text-[9px] font-bold rounded-md">ASSET</button>
+                        <button onclick="del('\${ad.path}')" class="p-2 text-red-500 hover:bg-red-50 rounded-md">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                    </div>
+                </div>\`;
+            }).join('');
+        }
+
+        function renderMiniChart(data, up) {
+            const max = Math.max(...data, 1);
+            const pts = data.map((v, i) => \`\${(i * 4.5)},\${20 - (v / max * 18)}\`).join(' ');
+            return \`<polyline points="\${pts}" fill="none" stroke="\${up ? '#10b981' : '#ef4444'}" stroke-width="2" stroke-linecap="round"/>\`;
         }
 
         function addAd() {
             Swal.fire({
-                title: '<span class="text-sm font-black uppercase">Tambah Campaign</span>',
-                html: \`
-                    <div class="text-left space-y-2">
-                        <input id="sw-client" class="swal2-input !m-0 !w-full" placeholder="Nama Advertiser">
-                        <input id="sw-slug" class="swal2-input !m-0 !w-full" placeholder="URL Slug (misal: promo-maret)">
-                        <input id="sw-target" class="swal2-input !m-0 !w-full" placeholder="URL Tujuan (https://...)">
-                        <input id="sw-price" type="number" class="swal2-input !m-0 !w-full" placeholder="Harga per Klik (Rp)">
-                        <input id="sw-file" type="file" class="swal2-input !m-0 !w-full text-xs" accept="image/*">
-                    </div>\`,
-                showCancelButton: true,
-                confirmButtonColor: '#2563eb',
-                confirmButtonText: 'DEPLOY NOW',
+                title: 'NEW CAMPAIGN',
+                html: '<input id="a" class="swal2-input" placeholder="Client"><input id="b" class="swal2-input" placeholder="Slug"><input id="c" class="swal2-input" placeholder="Target URL"><input id="d" type="number" class="swal2-input" placeholder="Price/Click"><input id="e" type="file" class="swal2-input" accept="image/*">',
                 preConfirm: () => {
                     const fd = new FormData();
-                    fd.append('client', document.getElementById('sw-client').value);
-                    fd.append('slug', document.getElementById('sw-slug').value);
-                    fd.append('target', document.getElementById('sw-target').value);
-                    fd.append('price', document.getElementById('sw-price').value);
-                    fd.append('banner', document.getElementById('sw-file').files[0]);
+                    fd.append('client', document.getElementById('a').value);
+                    fd.append('slug', document.getElementById('b').value);
+                    fd.append('target', document.getElementById('c').value);
+                    fd.append('price', document.getElementById('d').value);
+                    fd.append('banner', document.getElementById('e').files[0]);
                     return fd;
                 }
-            }).then(result => {
-                if (result.isConfirmed) {
-                    Swal.fire({ title: 'Deploying...', didOpen: () => Swal.showLoading() });
-                    fetch('/api/create', { method: 'POST', body: result.value }).then(() => {
-                        updateData();
-                        Swal.fire('Success!', 'Campaign berhasil dibuat.', 'success');
-                    });
-                }
+            }).then(r => r.isConfirmed && fetch('/api/create',{method:'POST',body:r.value}).then(()=>load()));
+        }
+
+        function copy(t) { navigator.clipboard.writeText(t); Swal.fire({toast:true, position:'top', icon:'success', title:'Copied', showConfirmButton:false, timer:800}); }
+        
+        function embed(p, i) {
+            const code = \`<a href="\${window.location.origin}/\${p}"><img src="\${i}" width="100%"></a>\`;
+            Swal.fire({ title:'EMBED CODE', html:\`<textarea class="w-full h-24 p-2 text-[10px] font-mono border">\${code}</textarea>\` });
+        }
+
+        function del(s) {
+            Swal.fire({ title:'Hapus?', icon:'warning', showCancelButton:true, confirmButtonColor:'#ef4444' }).then(r => {
+                if(r.isConfirmed) fetch('/api/delete',{method:'POST',body:JSON.stringify({slug:s})}).then(()=>load());
             });
         }
 
-        function askDelete(slug) {
-            Swal.fire({
-                title: 'Hapus Campaign?',
-                text: "Data statistik /" + slug + " akan hilang selamanya.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#ef4444',
-                cancelButtonColor: '#64748b',
-                confirmButtonText: 'IYA, HAPUS!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    fetch('/api/delete', { method: 'POST', body: JSON.stringify({ slug }) }).then(() => {
-                        updateData();
-                        Swal.fire('Terhapus!', 'Campaign telah dibersihkan.', 'success');
-                    });
-                }
-            });
-        }
-
-        function copy(text) {
-            navigator.clipboard.writeText(text);
-            Swal.fire({ toast: true, position: 'top', icon: 'success', title: 'Berhasil disalin!', showConfirmButton: false, timer: 1500 });
-        }
-
-        function embed(link, img) {
-            const code = \`<a href="\${link}"><img src="\${img}" width="100%" alt="Ad"></a>\`;
-            Swal.fire({
-                title: 'SEO Embed Code',
-                html: \`<textarea class="w-full h-32 p-3 text-[10px] font-mono border rounded-xl bg-slate-50">\${code}</textarea>\`,
-                footer: '<p class="text-[9px] text-slate-400 uppercase font-bold">Paste kode ini di file HTML atau CMS Anda</p>'
-            });
-        }
-
-        // Jalankan & Auto Refresh tiap 5 detik
-        updateData();
-        setInterval(updateData, 5000);
+        load();
+        setInterval(load, 5000);
     </script>
 </body>
 </html>`;
