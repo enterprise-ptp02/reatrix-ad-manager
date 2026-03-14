@@ -1,0 +1,11 @@
+name = "reatrix-ad-manager"
+main = "src/index.js"
+compatibility_date = "2026-03-14"
+
+[[kv_namespaces]]
+binding = "AD_MANAGER_KV"
+id = "28604917be9f413eab9c96a0849ef16e"
+
+[[r2_buckets]]
+binding = "AD_BUCKET"
+bucket_name = "reatrix-ads"
