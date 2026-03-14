@@ -188,49 +188,48 @@ function renderHTML() {
             \${renderStatCard('Avg. CTR', avgCTR + '%', 'text-orange-400')}
           \`;
 
-          // Update Ads List
+          // Update Ads List ke Desain Clean List (Sesuai Request)
           const container = document.getElementById('ads-container');
+          container.className = "flex flex-col gap-1"; // List vertikal rapat
           container.innerHTML = ads.map(ad => {
             const rev = (ad.clicks || 0) * (ad.price_per_click || 0);
-            const isExp = new Date() > new Date(ad.expiry_date);
+            const CTR = ad.views > 0 ? ((ad.clicks / ad.views) * 100).toFixed(2) : 0;
             const mobilePerc = ad.devices ? Math.round((ad.devices.mobile / ad.clicks) * 100) || 0 : 0;
 
-            return \`
-              <div class="glass p-5 rounded-[2.5rem] flex flex-col md:flex-row items-center gap-6 relative overflow-hidden group">
-                <div class="relative w-24 h-24 shrink-0">
-                  <img src="\${ad.banner_url}" class="w-full h-full rounded-[2rem] object-cover shadow-2xl">
-                  <div class="absolute -top-2 -right-2 \${isExp ? 'bg-red-500' : 'bg-green-500'} w-4 h-4 rounded-full border-4 border-[#0f172a]"></div>
-                </div>
-                
-                <div class="flex-1 w-full text-center md:text-left">
-                  <div class="flex flex-col md:flex-row md:items-center gap-2 mb-2">
-                    <h4 class="font-black text-lg tracking-tight uppercase">\${ad.client}</h4>
-                    <span class="text-[9px] font-black px-3 py-1 bg-slate-800 rounded-full text-slate-400 self-center">/\${ad.path}</span>
+            return `
+              <div class="glass flex items-center justify-between p-4 rounded-2xl group hover:bg-slate-800/40 transition-all border-b border-white/5">
+                <div class="flex items-center gap-4">
+                  <div class="relative w-12 h-12">
+                    <img src="${ad.banner_url}" class="w-full h-full rounded-xl object-cover">
+                    <div class="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-[#020617]"></div>
                   </div>
                   
-                  <div class="grid grid-cols-3 gap-2">
-                    <div class="bg-slate-900/50 p-3 rounded-2xl">
-                      <p class="text-[8px] font-bold text-slate-500 uppercase">Clicks</p>
-                      <p class="text-sm font-black">\${ad.clicks}</p>
-                    </div>
-                    <div class="bg-slate-900/50 p-3 rounded-2xl">
-                      <p class="text-[8px] font-bold text-slate-500 uppercase">Revenue</p>
-                      <p class="text-sm font-black text-green-400">Rp \${rev.toLocaleString()}</p>
-                    </div>
-                    <div class="bg-slate-900/50 p-3 rounded-2xl">
-                      <p class="text-[8px] font-bold text-slate-500 uppercase">Device</p>
-                      <p class="text-[10px] font-black text-blue-400">\${mobilePerc}% Mobile</p>
-                    </div>
+                  <div>
+                    <h4 class="font-bold text-sm text-white">${ad.client}</h4>
+                    <p class="text-[10px] font-mono text-slate-500">link.reatrixweb.com/${ad.path}</p>
                   </div>
                 </div>
 
-                <div class="flex items-center gap-2">
-                   <button onclick="confirmDelete('\${ad.path}', '\${ad.file_name}')" class="bg-red-500/10 hover:bg-red-500 text-red-500 p-4 rounded-2xl transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                <div class="flex items-center gap-8 text-right">
+                  <div class="hidden md:block">
+                    <p class="text-[9px] font-bold text-slate-600 uppercase">Device</p>
+                    <p class="text-[11px] font-black text-blue-400">${mobilePerc}% Mob</p>
+                  </div>
+                  <div>
+                    <p class="text-[9px] font-bold text-slate-600 uppercase">Clicks</p>
+                    <p class="text-[11px] font-black">${ad.clicks}</p>
+                  </div>
+                  <div>
+                    <p class="text-[9px] font-bold text-slate-600 uppercase">Revenue</p>
+                    <p class="text-[11px] font-black text-green-400">Rp${rev.toLocaleString()}</p>
+                  </div>
+                  
+                  <button onclick="confirmDelete('${ad.path}', '${ad.file_name}')" class="ml-4 opacity-0 group-hover:opacity-100 p-2 hover:text-red-500 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                   </button>
                 </div>
               </div>
-            \`;
+            `;
           }).join('');
         } catch (e) { console.error("Update failed", e); }
       }
